@@ -347,3 +347,7 @@ class ParameterSet(BaseModel):
 
         data = json.dumps(self.to_dict(), sort_keys=True)
         return hashlib.sha256(data.encode()).hexdigest()
+
+# Aliases for compatibility
+StringParameter = StrParameter
+
