@@ -16,6 +16,7 @@ except ImportError:
     dpg = None  # type: ignore
 
 from koocad.ui.node_editor import NodeEditor
+from koocad.ui.preview_3d import Preview3D
 from koocad.ui.theme import setup_theme
 
 
@@ -33,6 +34,7 @@ class KooCADApp:
 
         self.title = title
         self.node_editor: Optional[NodeEditor] = None
+        self.preview_3d: Optional[Preview3D] = None
         self.current_file: Optional[Path] = None
 
         # Initialize DearPyGui context
@@ -134,18 +136,36 @@ class KooCADApp:
                 with dpg.child_window(tag="editor_panel"):
                     self.node_editor = NodeEditor()
                     self.node_editor.create()
+                    # Connect execution callback to preview
+                    self.node_editor.execution_callback = self.on_graph_executed
 
                 # Right panel - Properties and preview
                 with dpg.child_window(width=300, tag="properties_panel"):
                     dpg.add_text("Properties", color=(255, 255, 0))
                     dpg.add_separator()
 
+                    # Execute button
+                    with dpg.group(horizontal=True):
+                        dpg.add_button(
+                            label="Execute Graph",
+                            callback=self.on_execute_graph,
+                            width=140,
+                        )
+                        dpg.add_button(
+                            label="Clear",
+                            callback=self.on_new,
+                            width=140,
+                        )
+
+                    dpg.add_separator()
+
                     with dpg.collapsing_header(label="Node Properties", default_open=True):
                         dpg.add_text("Select a node to view properties")
 
                     with dpg.collapsing_header(label="3D Preview", default_open=True):
-                        dpg.add_text("3D preview will appear here")
-                        # TODO: Add 3D viewport in Phase 94-95
+                        # Create 3D preview viewport
+                        self.preview_3d = Preview3D(width=280, height=200)
+                        self.preview_3d.create()
 
                     with dpg.collapsing_header(label="Export Settings"):
                         dpg.add_combo(
@@ -253,6 +273,33 @@ class KooCADApp:
         if self.node_editor:
             self.node_editor.add_component_node(component_type)
             self.update_status(f"Added {component_type} node")
+
+    def on_execute_graph(self) -> None:
+        """Execute node graph and update preview."""
+        if not self.node_editor:
+            self.update_status("No node editor available")
+            return
+
+        self.update_status("Executing graph...")
+        result = self.node_editor.execute_graph()
+
+        if result:
+            self.update_status("Graph executed successfully")
+        else:
+            self.update_status("Graph execution failed - check console for errors")
+
+    def on_graph_executed(self, shape: Any) -> None:
+        """Callback when graph execution completes.
+
+        Args:
+            shape: Generated CAD shape.
+        """
+        if self.preview_3d and shape:
+            try:
+                self.preview_3d.update_shape(shape)
+                self.update_status("Preview updated")
+            except Exception as e:
+                self.update_status(f"Preview update failed: {e}")
 
     def update_status(self, message: str) -> None:
         """Update status bar message.

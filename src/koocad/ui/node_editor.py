@@ -7,12 +7,14 @@ create parametric designs by connecting nodes.
 
 from __future__ import annotations
 
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable
 
 try:
     import dearpygui.dearpygui as dpg
 except ImportError:
     dpg = None  # type: ignore
+
+from koocad.ui.graph_executor import GraphExecutor
 
 
 class Node:
@@ -133,6 +135,17 @@ class ParameterNode(Node):
                     width=150,
                 )
 
+    def execute(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute parameter node to output its value.
+
+        Args:
+            inputs: Unused for parameter nodes.
+
+        Returns:
+            Dictionary with parameter name as key and value.
+        """
+        return {self.param_name: self.parameters["value"]}
+
 
 class ComponentNode(Node):
     """Node for electronic component generation."""
@@ -147,6 +160,7 @@ class ComponentNode(Node):
         super().__init__(node_id, component_type)
         self.component_type = component_type
         self._setup_default_parameters()
+        self.generator = None  # Will hold the actual generator instance
 
     def _setup_default_parameters(self) -> None:
         """Setup default parameters based on component type."""
@@ -213,6 +227,66 @@ class ComponentNode(Node):
                         width=150,
                     )
 
+    def execute(self, inputs: Dict[str, Any]) -> Dict[str, Any]:
+        """Execute node to generate component.
+
+        Args:
+            inputs: Dictionary of input values from connected nodes.
+
+        Returns:
+            Dictionary with 'Shape' key containing generated shape.
+        """
+        # Merge inputs with node's parameters (inputs override parameters)
+        params = self.parameters.copy()
+        params.update(inputs)
+
+        try:
+            # Try to import and create generator
+            # This is a simplified version - in production would use proper factory
+            if self.component_type == "BGA":
+                from koocad.generators.bga import BGAGenerator
+                gen = BGAGenerator(
+                    substrate_width=params.get("substrate_width", 12.0),
+                    substrate_height=params.get("substrate_height", 12.0),
+                    substrate_thickness=params.get("substrate_thickness", 0.8),
+                    ball_rows=params.get("ball_rows", 15),
+                    ball_cols=params.get("ball_cols", 15),
+                    ball_pitch=params.get("ball_pitch", 0.8),
+                    ball_diameter=params.get("ball_diameter", 0.4),
+                )
+            elif self.component_type == "MLCC":
+                from koocad.generators.passives import MLCCGenerator
+                gen = MLCCGenerator(
+                    body_length=params.get("body_length", 2.0),
+                    body_width=params.get("body_width", 1.25),
+                    body_height=params.get("body_height", 1.25),
+                    termination_length=params.get("termination_length", 0.25),
+                )
+            elif self.component_type == "Resistor":
+                from koocad.generators.passives import ChipResistorGenerator
+                gen = ChipResistorGenerator(
+                    body_length=params.get("body_length", 2.0),
+                    body_width=params.get("body_width", 1.25),
+                    body_height=params.get("body_height", 0.6),
+                    termination_length=params.get("termination_length", 0.25),
+                )
+            else:
+                # Unsupported component type
+                print(f"Component type {self.component_type} not yet implemented")
+                return {"Shape": None}
+
+            # Generate the shape
+            shape = gen.generate()
+            return {"Shape": shape}
+
+        except ImportError as e:
+            print(f"Cannot generate {self.component_type}: {e}")
+            print("Note: CadQuery must be installed for actual shape generation")
+            return {"Shape": None}
+        except Exception as e:
+            print(f"Error generating {self.component_type}: {e}")
+            return {"Shape": None}
+
 
 class NodeEditor:
     """Node editor for visual programming."""
@@ -226,6 +300,8 @@ class NodeEditor:
         self.nodes: Dict[int, Node] = {}
         self.links: List[tuple[int, int]] = []
         self.next_node_id = 1
+        self.executor = GraphExecutor()
+        self.execution_callback: Optional[Callable[[Any], None]] = None
 
     def create(self) -> None:
         """Create node editor widget."""
@@ -310,7 +386,39 @@ class NodeEditor:
         self.links.clear()
         self.next_node_id = 1
 
-    def execute_graph(self) -> None:
-        """Execute node graph to generate CAD model."""
-        # TODO: Implement topological sort and execution in Phase 93
-        print("Execute graph - not yet implemented")
+    def execute_graph(self) -> Optional[Any]:
+        """Execute node graph to generate CAD model.
+
+        Returns:
+            The result from the final output node, or None if execution fails.
+        """
+        if not self.nodes:
+            print("No nodes to execute")
+            return None
+
+        # Execute graph using executor
+        results = self.executor.execute_graph(self.nodes, self.links)
+
+        if not results:
+            print("Graph execution failed - check for cycles or errors")
+            return None
+
+        # Find output nodes (nodes with no outgoing connections)
+        output_nodes = []
+        for node_id in self.nodes.keys():
+            has_output = any(from_pin // 1000 == node_id for from_pin, _ in self.links)
+            if not has_output:
+                output_nodes.append(node_id)
+
+        # Get result from the last output node
+        final_result = None
+        for node_id in output_nodes:
+            if node_id in results and results[node_id].success:
+                final_result = results[node_id].outputs.get("Output") or results[node_id].outputs.get("Shape")
+
+        # Call callback if registered
+        if self.execution_callback and final_result:
+            self.execution_callback(final_result)
+
+        print(f"Graph executed successfully. {len(results)} nodes processed.")
+        return final_result
