@@ -11,7 +11,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any, Generic, Optional, TypeVar
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 T = TypeVar("T")
 
@@ -71,10 +71,7 @@ class Parameter(ABC, BaseModel, Generic[T]):
         default_factory=dict, description="Additional metadata"
     )
 
-    class Config:
-        """Pydantic config."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def validate_value(self, value: T) -> bool:
         """Validate value against all constraints."""
@@ -169,12 +166,20 @@ class EnumParameter(Parameter[str]):
     value: str
     choices: list[str] = Field(..., description="Valid choices")
 
-    @validator("value")
-    def validate_choice(cls, v: str, values: dict[str, Any]) -> str:
-        """Ensure value is in choices."""
-        if "choices" in values and v not in values["choices"]:
-            raise ValueError(f"Value '{v}' not in choices: {values['choices']}")
+    @field_validator("value")
+    @classmethod
+    def validate_choice(cls, v: str) -> str:
+        """Ensure value is in choices.
+
+        Note: Full validation happens in __init__ after all fields are set.
+        """
         return v
+
+    def __init__(self, **data: Any):
+        """Initialize and validate choice."""
+        super().__init__(**data)
+        if self.value not in self.choices:
+            raise ValueError(f"Value '{self.value}' not in choices: {self.choices}")
 
     def to_base_unit(self) -> float:
         """Return index of choice."""
@@ -240,10 +245,7 @@ class ParameterSet(BaseModel):
     version: int = Field(1, description="Version number for tracking changes")
     checksum: Optional[str] = Field(None, description="SHA256 checksum of parameters")
 
-    class Config:
-        """Pydantic config."""
-
-        arbitrary_types_allowed = True
+    model_config = ConfigDict(arbitrary_types_allowed=True)
 
     def add(self, param: Parameter) -> None:
         """Add parameter to set."""
