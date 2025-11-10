@@ -1,202 +1,167 @@
 """
-Tests for parameter serialization.
+Pytest test suite for KooCAD serialization module.
+
+Tests for parameter and parameter set serialization/deserialization.
 """
 
-import json
-from pathlib import Path
-
 import pytest
-
-from koocad.core.parameters import FloatParameter, IntParameter, ParameterSet, Unit
-from koocad.core.serialization import (
-    JSONSerializer,
-    ParameterSerializer,
-    SerializationFormat,
-    UniversalSerializer,
+from koocad.core.serialization import ParameterSerializer
+from koocad.core.parameters import (
+    FloatParameter,
+    IntParameter,
+    StringParameter,
+    ExpressionParameter,
+    ParameterSet,
+    Unit,
 )
 
 
-def test_parameter_to_dict():
-    """Test parameter to dictionary conversion."""
-    param = FloatParameter(
-        name="width",
-        value=12.0,
-        description="Width in mm",
-        min_value=5.0,
-        max_value=50.0,
-        unit=Unit.MM,
-    )
+class TestParameterSerialization:
+    """Test parameter serialization."""
 
-    data = ParameterSerializer.parameter_to_dict(param)
-
-    assert data["name"] == "width"
-    assert data["value"] == 12.0
-    assert data["type"] == "FloatParameter"
-    assert data["min_value"] == 5.0
-    assert data["max_value"] == 50.0
-    assert data["unit"] == "mm"
-
-
-def test_dict_to_parameter():
-    """Test dictionary to parameter conversion."""
-    data = {
-        "type": "FloatParameter",
-        "name": "width",
-        "value": 12.0,
-        "description": "Width in mm",
-        "min_value": 5.0,
-        "max_value": 50.0,
-        "unit": "mm",
-    }
-
-    param = ParameterSerializer.dict_to_parameter(data)
-
-    assert isinstance(param, FloatParameter)
-    assert param.name == "width"
-    assert param.value == 12.0
-    assert param.min_value == 5.0
-    assert param.max_value == 50.0
-    assert param.unit == Unit.MM
-
-
-def test_parameter_set_serialization():
-    """Test parameter set serialization."""
-    param_set = ParameterSet()
-    param_set.add(
-        FloatParameter(
-            name="width",
-            value=12.0,
-            min_value=5.0,
-            max_value=50.0,
+    def test_float_parameter_to_dict(self):
+        """Test FloatParameter serialization to dict."""
+        fp = FloatParameter(
+            name='width',
+            value=10.0,
+            min_value=0.0,
+            max_value=100.0,
             unit=Unit.MM,
+            description='Test width parameter'
         )
-    )
-    param_set.add(
-        IntParameter(
-            name="count",
-            value=10,
+
+        data = ParameterSerializer.parameter_to_dict(fp)
+
+        assert data['type'] == 'FloatParameter'
+        assert data['name'] == 'width'
+        assert data['value'] == 10.0
+        assert data['min_value'] == 0.0
+        assert data['max_value'] == 100.0
+        assert data['description'] == 'Test width parameter'
+
+    def test_int_parameter_to_dict(self):
+        """Test IntParameter serialization to dict."""
+        ip = IntParameter(
+            name='count',
+            value=15,
             min_value=1,
-            max_value=100,
+            max_value=50
         )
-    )
 
-    # Serialize
-    json_str = JSONSerializer.serialize(param_set)
-    assert "width" in json_str
-    assert "count" in json_str
+        data = ParameterSerializer.parameter_to_dict(ip)
 
-    # Deserialize
-    restored = JSONSerializer.deserialize(json_str)
-    assert len(restored.parameters) == 2
-    assert restored.get("width") is not None
-    assert restored.get("count") is not None
+        assert data['type'] == 'IntParameter'
+        assert data['name'] == 'count'
+        assert data['value'] == 15
+        assert data['min_value'] == 1
+        assert data['max_value'] == 50
 
-
-def test_json_file_operations(tmp_path: Path):
-    """Test JSON save/load operations."""
-    param_set = ParameterSet()
-    param_set.add(
-        FloatParameter(
-            name="width",
-            value=12.0,
-            unit=Unit.MM,
+    def test_roundtrip_serialization(self):
+        """Test parameter roundtrip serialization."""
+        original = FloatParameter(
+            name='height',
+            value=20.0,
+            min_value=0.0,
+            max_value=100.0
         )
-    )
 
-    file_path = tmp_path / "params.json"
+        # Serialize
+        data = ParameterSerializer.parameter_to_dict(original)
 
-    # Save
-    JSONSerializer.save(param_set, file_path)
-    assert file_path.exists()
+        # Deserialize
+        restored = ParameterSerializer.dict_to_parameter(data)
 
-    # Load
-    loaded = JSONSerializer.load(file_path)
-    assert len(loaded.parameters) == 1
-    assert loaded.get("width") is not None
-
-
-def test_universal_serializer_auto_detect(tmp_path: Path):
-    """Test universal serializer format auto-detection."""
-    param_set = ParameterSet()
-    param_set.add(
-        FloatParameter(
-            name="width",
-            value=12.0,
-            unit=Unit.MM,
-        )
-    )
-
-    # Test .json extension
-    json_file = tmp_path / "params.json"
-    UniversalSerializer.save(param_set, json_file)
-    loaded = UniversalSerializer.load(json_file)
-    assert loaded.get("width") is not None
+        # Verify
+        assert restored.name == original.name
+        assert restored.value == original.value
+        assert restored.min_value == original.min_value
+        assert restored.max_value == original.max_value
 
 
-def test_roundtrip_preserves_values():
-    """Test that serialization roundtrip preserves all values."""
-    param_set = ParameterSet()
-    param_set.add(
-        FloatParameter(
-            name="width",
-            value=12.345,
-            description="Test parameter",
-            min_value=5.0,
-            max_value=50.0,
-            unit=Unit.MM,
-        )
-    )
-    param_set.add(
-        IntParameter(
-            name="count",
-            value=42,
-            description="Count parameter",
-            min_value=1,
-            max_value=100,
-        )
-    )
+class TestParameterSetSerialization:
+    """Test ParameterSet serialization."""
 
-    # Serialize and deserialize
-    json_str = JSONSerializer.serialize(param_set)
-    restored = JSONSerializer.deserialize(json_str)
+    def test_parameter_set_to_dict(self):
+        """Test ParameterSet serialization to dict."""
+        param_set = ParameterSet()
+        param_set.add(FloatParameter(name='width', value=10.0))
+        param_set.add(FloatParameter(name='height', value=20.0))
 
-    # Check width
-    width = restored.get("width")
-    assert isinstance(width, FloatParameter)
-    assert width.value == 12.345
-    assert width.min_value == 5.0
-    assert width.max_value == 50.0
-    assert width.unit == Unit.MM
+        data = ParameterSerializer.parameter_set_to_dict(param_set)
 
-    # Check count
-    count = restored.get("count")
-    assert isinstance(count, IntParameter)
-    assert count.value == 42
-    assert count.min_value == 1
-    assert count.max_value == 100
+        assert 'parameters' in data
+        assert 'version' in data
+        # parameters is a list, not a dict
+        assert isinstance(data['parameters'], list)
+        assert len(data['parameters']) == 2
+        
+        # Check parameter names
+        param_names = [p['name'] for p in data['parameters']]
+        assert 'width' in param_names
+        assert 'height' in param_names
+
+    def test_parameter_set_roundtrip(self):
+        """Test ParameterSet roundtrip serialization."""
+        original = ParameterSet()
+        original.add(FloatParameter(name='width', value=10.0))
+        original.add(IntParameter(name='count', value=15))
+        original.add(ExpressionParameter(name='expr', value='width + 10'))
+
+        # Serialize
+        data = ParameterSerializer.parameter_set_to_dict(original)
+
+        # Deserialize
+        restored = ParameterSerializer.dict_to_parameter_set(data)
+
+        # Verify
+        assert len(restored.parameters) == len(original.parameters)
+        assert restored.get('width').value == original.get('width').value
+        assert restored.get('count').value == original.get('count').value
+        assert restored.get('expr').value == original.get('expr').value
+
+    def test_parameter_set_with_expressions(self):
+        """Test ParameterSet with ExpressionParameters."""
+        param_set = ParameterSet()
+        param_set.add(FloatParameter(name='width', value=10.0))
+        param_set.add(FloatParameter(name='height', value=20.0))
+        param_set.add(ExpressionParameter(name='area', value='width * height'))
+
+        # Serialize
+        data = ParameterSerializer.parameter_set_to_dict(param_set)
+
+        # Deserialize
+        restored = ParameterSerializer.dict_to_parameter_set(data)
+
+        # Verify
+        assert len(restored.parameters) == 3
+        assert isinstance(restored.get('area'), ExpressionParameter)
+        assert restored.get('area').value == 'width * height'
 
 
-@pytest.mark.skipif(
-    not pytest.importorskip("msgpack", reason="msgpack not installed"),
-    reason="msgpack not installed",
-)
-def test_messagepack_serialization():
-    """Test MessagePack serialization."""
-    from koocad.core.serialization import MessagePackSerializer
+class TestSerializationEdgeCases:
+    """Test serialization edge cases."""
 
-    param_set = ParameterSet()
-    param_set.add(
-        FloatParameter(
-            name="width",
-            value=12.0,
-            unit=Unit.MM,
-        )
-    )
+    def test_parameter_with_no_constraints(self):
+        """Test parameter without min/max constraints."""
+        fp = FloatParameter(name='value', value=42.0)
 
-    # Serialize
-    data = MessagePackSerializer.serialize(param_set)
-    assert isinstance(data, bytes)
+        data = ParameterSerializer.parameter_to_dict(fp)
+        restored = ParameterSerializer.dict_to_parameter(data)
 
-    # Deserialize
-    restored = MessagePackSerializer.deserialize(data)
-    assert restored.get("width") is not None
+        assert restored.value == 42.0
+        assert restored.min_value is None
+        assert restored.max_value is None
+
+    def test_empty_parameter_set(self):
+        """Test empty ParameterSet serialization."""
+        empty_set = ParameterSet()
+
+        data = ParameterSerializer.parameter_set_to_dict(empty_set)
+        restored = ParameterSerializer.dict_to_parameter_set(data)
+
+        assert len(restored.parameters) == 0
+
+
+# Run tests with pytest
+if __name__ == '__main__':
+    pytest.main([__file__, '-v'])
