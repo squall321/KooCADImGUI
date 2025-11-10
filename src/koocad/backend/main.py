@@ -77,6 +77,16 @@ if FASTAPI_AVAILABLE:
         allow_headers=["*"],
     )
 
+    # Add custom middleware
+    try:
+        from koocad.backend.middleware.metrics import MetricsMiddleware
+        from koocad.backend.middleware.rate_limit import RateLimitMiddleware
+
+        app.add_middleware(MetricsMiddleware)
+        # app.add_middleware(RateLimitMiddleware)  # Enable when Redis is available
+    except ImportError as e:
+        print(f"Warning: Could not load middleware: {e}")
+
     # Root endpoint
     @app.get("/")
     async def root() -> dict:
@@ -110,12 +120,45 @@ if FASTAPI_AVAILABLE:
         Returns:
             Readiness status with dependency checks.
         """
-        # TODO: Add actual dependency checks (DB, Redis, etc.)
+        # Check database connectivity
+        db_status = "ok"
+        try:
+            from sqlalchemy import text
+            from koocad.backend.database import async_engine
+            async with async_engine.connect() as conn:
+                await conn.execute(text("SELECT 1"))
+        except Exception as e:
+            db_status = f"error: {e}"
+
+        # Check Redis connectivity
+        redis_status = "ok"
+        try:
+            import redis.asyncio as redis
+            r = redis.from_url(settings.redis_url)
+            await r.ping()
+            await r.close()
+        except Exception as e:
+            redis_status = f"error: {e}"
+
+        overall_status = "ready" if db_status == "ok" and redis_status == "ok" else "degraded"
+
         return {
-            "status": "ready",
-            "database": "ok",
-            "redis": "ok",
+            "status": overall_status,
+            "database": db_status,
+            "redis": redis_status,
         }
+
+    @app.get("/metrics")
+    async def metrics() -> Response:
+        """Prometheus metrics endpoint.
+
+        Returns:
+            Prometheus metrics in text format.
+        """
+        from koocad.backend.middleware.metrics import get_metrics
+
+        metrics_data, content_type = get_metrics()
+        return Response(content=metrics_data, media_type=content_type)
 
     # Include routers
     try:
