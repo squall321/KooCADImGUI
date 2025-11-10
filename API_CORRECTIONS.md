@@ -221,6 +221,42 @@ values = param_set.evaluate_all()
 
 ---
 
+## Issue 6: ExpressionParameter Value Field
+
+### ❌ Incorrect Field Name
+```python
+# This FAILS - no 'expression' field
+area = ExpressionParameter(
+    name='area',
+    expression='width * height',  # Wrong!
+    description='Computed area'
+)
+```
+
+### ✅ Correct Usage
+```python
+# The expression string goes in the 'value' field
+area = ExpressionParameter(
+    name='area',
+    value='width * height',  # Correct - expression string is the value
+    description='Computed area'
+)
+
+# Use with ParameterSet for dependency resolution
+param_set = ParameterSet()
+param_set.add(width)
+param_set.add(height)
+param_set.add(area)
+
+# Evaluate resolves dependencies
+values = param_set.evaluate_all()  # {'width': 10.0, 'height': 20.0, 'area': 200.0}
+```
+
+### Root Cause
+ExpressionParameter inherits from `Parameter[str]`, where the generic type `str` is the expression string. This goes in the `value` field, not a separate `expression` field.
+
+---
+
 ## Action Items
 
 ### High Priority
