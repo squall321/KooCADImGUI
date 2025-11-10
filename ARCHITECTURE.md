@@ -526,5 +526,75 @@ CREATE INDEX idx_exports_job_id ON exports(job_id);
 
 ---
 
+## Apptainer 컨테이너 전략
+
+### Why Apptainer (vs Docker)?
+
+**HPC 환경에 최적화:**
+- Rootless 실행 (sudo 불필요)
+- MPI 지원 우수 (InfiniBand, RDMA)
+- POSIX 파일시스템 직접 접근
+- GPU 패스스루 간편
+- Slurm 네이티브 통합
+
+**보안:**
+- User namespace isolation
+- No daemon process
+- Immutable container images
+- Verified container signing
+
+**호환성:**
+- Docker 이미지 변환 가능 (`apptainer build --docker`)
+- OCI 표준 준수
+- Singularity 후속 프로젝트 (CNCF)
+
+### Container Images
+
+**Production (koocad.sif):**
+```bash
+apptainer build koocad.sif koocad.def
+```
+- Python 3.11 + CadQuery + OCCT
+- 최소화된 이미지 (~2GB)
+- Read-only filesystem
+
+**Development (koocad-dev.sif):**
+```bash
+apptainer build --fakeroot koocad-dev.sif koocad-dev.def
+```
+- 개발 도구 포함 (pytest, mypy, ruff)
+- Source code bind mount 지원
+- Writable overlay 가능
+
+### Slurm Integration Example
+
+```bash
+#!/bin/bash
+#SBATCH --array=0-999
+
+apptainer exec \
+    --bind /scratch:/scratch \
+    --env DATABASE_URL=$DB_URL \
+    /shared/containers/koocad.sif \
+    koocad generate --params /scratch/params_${SLURM_ARRAY_TASK_ID}.json
+```
+
+### Local Development
+
+**Services (run separately):**
+- PostgreSQL: System service or Docker
+- Redis: System service or Docker
+- MinIO: Binary or Docker
+
+**KooCAD container:**
+```bash
+apptainer shell \
+    --bind $(pwd)/src:/opt/koocad/src \
+    --bind $(pwd)/data:/data \
+    koocad-dev.sif
+```
+
+---
+
 **작성일**: 2025-11-10
-**버전**: 1.0.0
+**버전**: 1.1.0 (Apptainer update)

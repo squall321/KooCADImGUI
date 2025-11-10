@@ -1,0 +1,59 @@
+Bootstrap: docker
+From: python:3.11-slim
+
+%labels
+    Author KooCAD Team
+    Version 0.1.0-dev
+    Description KooCAD Development Container
+
+%help
+    KooCAD Development Container
+
+    Build:
+        apptainer build --fakeroot koocad-dev.sif koocad-dev.def
+
+    Run with bind mounts:
+        apptainer shell \
+            --bind $(pwd)/src:/opt/koocad/src \
+            --bind $(pwd)/data:/opt/koocad/data \
+            koocad-dev.sif
+
+%environment
+    export PYTHONUNBUFFERED=1
+    export PYTHONDONTWRITEBYTECODE=1
+    export PATH=/opt/koocad/bin:$PATH
+    export PYTHONPATH=/opt/koocad/src:$PYTHONPATH
+
+%post
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential cmake git \
+        libocct-foundation-dev libocct-modeling-data-dev \
+        libocct-modeling-algorithms-dev libocct-visualization-dev \
+        libocct-data-exchange-dev \
+        libgl1-mesa-glx libglu1-mesa libxrandr2 libxinerama1 \
+        libxcursor1 libxi6 \
+        libgmsh-dev gmsh \
+        libopenmpi-dev openmpi-bin \
+        curl wget vim tmux \
+        && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+    pip install --upgrade pip setuptools wheel
+
+    # Install dev dependencies
+    pip install \
+        cadquery \
+        fastapi uvicorn \
+        pydantic pydantic-settings \
+        sqlalchemy alembic psycopg[binary] \
+        celery redis \
+        sympy pint numpy \
+        click rich structlog \
+        pytest pytest-cov pytest-asyncio pytest-benchmark \
+        mypy ruff black isort pre-commit \
+        dearpygui pillow moderngl \
+        gmsh meshio vtk
+
+    mkdir -p /opt/koocad/{src,data,logs}
+
+%runscript
+    exec /bin/bash "$@"

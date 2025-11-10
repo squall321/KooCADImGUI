@@ -37,15 +37,15 @@
 - pyproject.toml, setup.py 설정 (Poetry/PDM 사용)
 - .gitignore, .editorconfig, pre-commit hooks
 
-### Phase 2: 개발 환경 Docker 구성
-- Dockerfile.dev (Python 3.11 + OCCT + CadQuery)
-- docker-compose.yml (FastAPI + PostgreSQL + MinIO + Redis)
-- VSCode devcontainer.json
+### Phase 2: 개발 환경 Apptainer 구성
+- Apptainer definition 파일 (koocad.def, koocad-dev.def)
+- 로컬 서비스 설정 가이드 (PostgreSQL, Redis, MinIO)
+- HPC 통합 스크립트 (Slurm + Apptainer)
 
 ### Phase 3: CI/CD 파이프라인 기초
 - GitHub Actions: lint (ruff, mypy)
 - GitHub Actions: test (pytest)
-- GitHub Actions: build Docker images
+- GitHub Actions: build Apptainer images
 
 ### Phase 4: 문서화 인프라
 - Sphinx + Read the Docs 설정
@@ -90,7 +90,7 @@
 ### Phase 12: 패키지 배포 인프라
 - PyPI private repository
 - Conda-forge 채널
-- Docker Hub / GHCR 이미지
+- Apptainer container registry (Singularity Hub / GHCR)
 
 ### Phase 13: 개발자 도구 CLI
 - Click 기반 `koocad` 명령어

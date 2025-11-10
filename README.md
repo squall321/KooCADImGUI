@@ -57,31 +57,56 @@ KooCAD는 전자부품(BGA, WLP, 수동소자 등)의 **완전 파라메트릭 3
 
 ### 요구사항
 
+**개발 환경:**
 - Python 3.11+
-- Docker & Docker Compose
-- (Optional) CUDA 11.8+ for GPU rendering
+- Apptainer (Singularity) 1.1+
+- PostgreSQL 15+, Redis 7+, MinIO
+
+**HPC 환경:**
+- Slurm workload manager
+- Apptainer 지원
+- (Optional) InfiniBand, GPU
 
 ### 설치
+
+#### 로컬 개발
 
 ```bash
 # 1. Clone repository
 git clone https://github.com/yourusername/KooCADImGUI.git
 cd KooCADImGUI
 
-# 2. Install with all dependencies
-pip install -e ".[all]"
+# 2. 인프라 서비스 시작 (PostgreSQL, Redis, MinIO)
+# 옵션 A: 시스템 서비스 사용 (권장 for HPC)
+sudo systemctl start postgresql redis-server minio
 
-# 3. Start infrastructure (DB, Redis, MinIO)
-docker-compose up -d
+# 옵션 B: Docker로 로컬 서비스만 실행
+docker run -d --name koocad-postgres -p 5432:5432 \
+    -e POSTGRES_USER=koocad -e POSTGRES_DB=koocad postgres:16-alpine
 
-# 4. Run database migrations
+# 자세한 내용: docs/LOCAL_SERVICES.md
+
+# 3. Apptainer 컨테이너 빌드
+bash scripts/build-containers.sh
+
+# 4. 개발용 컨테이너로 진입
+apptainer shell --bind $(pwd)/src:/opt/koocad/src koocad-dev.sif
+
+# 5. (컨테이너 내부) 데이터베이스 마이그레이션
 alembic upgrade head
 
-# 5. Start API server
-koocad-server --host 0.0.0.0 --port 8000
+# 6. API 서버 실행
+apptainer exec koocad-dev.sif koocad-server
+```
 
-# 6. (별도 터미널) Start UI
-koocad-ui
+#### HPC 배치 실행
+
+```bash
+# 파라미터 스윕 생성
+koocad sweep generate --config sweep_config.yaml --output /scratch/params/
+
+# Slurm job array 제출
+sbatch scripts/slurm-batch-job.sh
 ```
 
 ### 첫 번째 CAD 생성

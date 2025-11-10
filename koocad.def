@@ -1,0 +1,98 @@
+Bootstrap: docker
+From: python:3.11-slim
+
+%labels
+    Author KooCAD Team
+    Version 0.1.0
+    Description KooCAD Parametric CAD System for HPC
+
+%help
+    KooCAD - Parametric Electronic Component CAD Automation System
+
+    Usage:
+        # Interactive shell
+        apptainer shell koocad.sif
+
+        # Run CAD generation
+        apptainer exec koocad.sif koocad generate --params params.json
+
+        # Run batch job
+        apptainer exec koocad.sif koocad-worker
+
+    Environment Variables:
+        DATABASE_URL       - PostgreSQL connection string
+        REDIS_URL          - Redis connection string
+        MINIO_ENDPOINT     - MinIO S3 endpoint
+
+%environment
+    export PYTHONUNBUFFERED=1
+    export PYTHONDONTWRITEBYTECODE=1
+    export PATH=/opt/koocad/bin:$PATH
+    export PYTHONPATH=/opt/koocad/src:$PYTHONPATH
+
+%files
+    # Copy source code
+    src /opt/koocad/src
+    pyproject.toml /opt/koocad/
+    README.md /opt/koocad/
+    LICENSE /opt/koocad/
+
+%post
+    # Update and install system dependencies
+    apt-get update && apt-get install -y --no-install-recommends \
+        build-essential \
+        cmake \
+        git \
+        # OCCT dependencies
+        libocct-foundation-dev \
+        libocct-modeling-data-dev \
+        libocct-modeling-algorithms-dev \
+        libocct-visualization-dev \
+        libocct-data-exchange-dev \
+        # Graphics libraries (for DearPyGui)
+        libgl1-mesa-glx \
+        libglu1-mesa \
+        libxrandr2 \
+        libxinerama1 \
+        libxcursor1 \
+        libxi6 \
+        # Mesh libraries
+        libgmsh-dev \
+        gmsh \
+        # MPI for parallel processing
+        libopenmpi-dev \
+        openmpi-bin \
+        # Utilities
+        curl \
+        wget \
+        vim \
+        && apt-get clean \
+        && rm -rf /var/lib/apt/lists/*
+
+    # Install Python packages
+    cd /opt/koocad
+    pip install --upgrade pip setuptools wheel
+    pip install -e ".[all]"
+
+    # Create directories
+    mkdir -p /opt/koocad/data/{params,results,cache}
+    mkdir -p /opt/koocad/logs
+
+    # Compile Python files for faster startup
+    python -m compileall /opt/koocad/src
+
+%runscript
+    # Default: run CLI help
+    exec koocad "$@"
+
+%startscript
+    # For instance mode (not commonly used)
+    exec koocad-server
+
+%test
+    # Run tests to validate container
+    cd /opt/koocad
+    python -c "import koocad; print(f'KooCAD version: {koocad.__version__}')"
+    python -c "import cadquery; print('CadQuery: OK')"
+    python -c "import sympy; print('SymPy: OK')"
+    python -c "import fastapi; print('FastAPI: OK')"

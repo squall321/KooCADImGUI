@@ -131,23 +131,31 @@ jobs:
             htmlcov/
 
   build:
-    name: Build Docker Image
+    name: Build Apptainer Container
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - name: Install Apptainer
+        run: |
+          sudo add-apt-repository -y ppa:apptainer/ppa
+          sudo apt update
+          sudo apt install -y apptainer
 
-      - name: Build image
-        uses: docker/build-push-action@v5
+      - name: Build container
+        run: |
+          apptainer build --fakeroot koocad.sif koocad.def
+
+      - name: Test container
+        run: |
+          apptainer exec koocad.sif python --version
+          apptainer test koocad.sif
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          context: .
-          file: ./Dockerfile.dev
-          push: false
-          tags: koocad:dev
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          name: koocad-container
+          path: koocad.sif
 
   security:
     name: Security Scan
