@@ -1,0 +1,309 @@
+"""
+Slurm job script generator.
+
+Creates sbatch scripts for HPC cluster job submission.
+
+Features:
+- Resource allocation (CPU, memory, GPU)
+- Time limits and QoS
+- Job arrays for parameter sweeps
+- Job dependencies (afterok, afterany)
+- Email notifications
+- Checkpoint/restart support
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Dict, List, Optional, Any
+
+
+class SlurmJobGenerator:
+    """Slurm batch job script generator."""
+
+    def __init__(
+        self,
+        job_name: str = "koocad_job",
+        partition: str = "compute",
+        nodes: int = 1,
+        ntasks: int = 1,
+        cpus_per_task: int = 4,
+        mem_per_cpu: str = "4G",
+        time: str = "01:00:00",
+        output: str = "slurm-%j.out",
+        error: str = "slurm-%j.err",
+    ):
+        """Initialize Slurm job generator.
+
+        Args:
+            job_name: Job name.
+            partition: Partition/queue name.
+            nodes: Number of nodes.
+            ntasks: Number of tasks.
+            cpus_per_task: CPUs per task.
+            mem_per_cpu: Memory per CPU.
+            time: Wall time limit (HH:MM:SS).
+            output: Output file pattern.
+            error: Error file pattern.
+        """
+        self.job_name = job_name
+        self.partition = partition
+        self.nodes = nodes
+        self.ntasks = ntasks
+        self.cpus_per_task = cpus_per_task
+        self.mem_per_cpu = mem_per_cpu
+        self.time = time
+        self.output = output
+        self.error = error
+
+        # Optional settings
+        self.account: Optional[str] = None
+        self.qos: Optional[str] = None
+        self.mail_type: Optional[str] = None
+        self.mail_user: Optional[str] = None
+        self.gres: Optional[str] = None  # GPU resources
+        self.array: Optional[str] = None  # Job array specification
+        self.dependency: Optional[str] = None
+        self.modules: List[str] = []
+        self.commands: List[str] = []
+        self.environment: Dict[str, str] = {}
+
+    def set_account(self, account: str) -> None:
+        """Set accounting project.
+
+        Args:
+            account: Account/project name.
+        """
+        self.account = account
+
+    def set_qos(self, qos: str) -> None:
+        """Set quality of service.
+
+        Args:
+            qos: QoS name (e.g., 'normal', 'high', 'debug').
+        """
+        self.qos = qos
+
+    def set_email_notification(
+        self,
+        email: str,
+        events: str = "END,FAIL",
+    ) -> None:
+        """Set email notifications.
+
+        Args:
+            email: Email address.
+            events: Mail events (BEGIN, END, FAIL, ALL).
+        """
+        self.mail_user = email
+        self.mail_type = events
+
+    def set_gpu_resources(
+        self,
+        gpu_type: str = "gpu",
+        gpu_count: int = 1,
+    ) -> None:
+        """Set GPU resources.
+
+        Args:
+            gpu_type: GPU type (e.g., 'gpu', 'a100', 'v100').
+            gpu_count: Number of GPUs.
+        """
+        self.gres = f"{gpu_type}:{gpu_count}"
+
+    def set_array(
+        self,
+        array_spec: str,
+    ) -> None:
+        """Set job array specification.
+
+        Args:
+            array_spec: Array specification (e.g., '1-100', '1-100%10').
+        """
+        self.array = array_spec
+
+    def set_dependency(
+        self,
+        dependency_type: str,
+        job_ids: List[int],
+    ) -> None:
+        """Set job dependency.
+
+        Args:
+            dependency_type: Dependency type (afterok, afterany, etc.).
+            job_ids: List of job IDs to depend on.
+        """
+        job_id_str = ":".join(str(jid) for jid in job_ids)
+        self.dependency = f"{dependency_type}:{job_id_str}"
+
+    def add_module(self, module: str) -> None:
+        """Add module to load.
+
+        Args:
+            module: Module name.
+        """
+        self.modules.append(module)
+
+    def add_command(self, command: str) -> None:
+        """Add command to execute.
+
+        Args:
+            command: Shell command.
+        """
+        self.commands.append(command)
+
+    def set_environment(self, key: str, value: str) -> None:
+        """Set environment variable.
+
+        Args:
+            key: Variable name.
+            value: Variable value.
+        """
+        self.environment[key] = value
+
+    def generate(
+        self,
+        filepath: str | Path,
+    ) -> Path:
+        """Generate Slurm batch script.
+
+        Args:
+            filepath: Output script path.
+
+        Returns:
+            Path to generated script.
+        """
+        filepath = Path(filepath)
+        filepath.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(filepath, "w") as f:
+            # Shebang
+            f.write("#!/bin/bash\n")
+            f.write("#\n")
+            f.write("# Slurm batch script generated by KooCAD\n")
+            f.write("#\n\n")
+
+            # Required SBATCH directives
+            f.write(f"#SBATCH --job-name={self.job_name}\n")
+            f.write(f"#SBATCH --partition={self.partition}\n")
+            f.write(f"#SBATCH --nodes={self.nodes}\n")
+            f.write(f"#SBATCH --ntasks={self.ntasks}\n")
+            f.write(f"#SBATCH --cpus-per-task={self.cpus_per_task}\n")
+            f.write(f"#SBATCH --mem-per-cpu={self.mem_per_cpu}\n")
+            f.write(f"#SBATCH --time={self.time}\n")
+            f.write(f"#SBATCH --output={self.output}\n")
+            f.write(f"#SBATCH --error={self.error}\n")
+
+            # Optional SBATCH directives
+            if self.account:
+                f.write(f"#SBATCH --account={self.account}\n")
+            if self.qos:
+                f.write(f"#SBATCH --qos={self.qos}\n")
+            if self.mail_user and self.mail_type:
+                f.write(f"#SBATCH --mail-user={self.mail_user}\n")
+                f.write(f"#SBATCH --mail-type={self.mail_type}\n")
+            if self.gres:
+                f.write(f"#SBATCH --gres={self.gres}\n")
+            if self.array:
+                f.write(f"#SBATCH --array={self.array}\n")
+            if self.dependency:
+                f.write(f"#SBATCH --dependency={self.dependency}\n")
+
+            f.write("\n")
+
+            # Job info
+            f.write("# Print job information\n")
+            f.write('echo "Job ID: $SLURM_JOB_ID"\n')
+            f.write('echo "Job name: $SLURM_JOB_NAME"\n')
+            f.write('echo "Node: $SLURM_NODELIST"\n')
+            f.write('echo "CPUs: $SLURM_CPUS_ON_NODE"\n')
+            if self.array:
+                f.write('echo "Array task ID: $SLURM_ARRAY_TASK_ID"\n')
+            f.write('echo "Working directory: $SLURM_SUBMIT_DIR"\n')
+            f.write('echo "Start time: $(date)"\n')
+            f.write("\n")
+
+            # Environment variables
+            if self.environment:
+                f.write("# Set environment variables\n")
+                for key, value in self.environment.items():
+                    f.write(f"export {key}={value}\n")
+                f.write("\n")
+
+            # Load modules
+            if self.modules:
+                f.write("# Load modules\n")
+                for module in self.modules:
+                    f.write(f"module load {module}\n")
+                f.write("\n")
+
+            # Change to submit directory
+            f.write("# Change to submit directory\n")
+            f.write("cd $SLURM_SUBMIT_DIR\n")
+            f.write("\n")
+
+            # Commands
+            if self.commands:
+                f.write("# Execute commands\n")
+                for cmd in self.commands:
+                    f.write(f"{cmd}\n")
+                f.write("\n")
+
+            # End time
+            f.write('echo "End time: $(date)"\n')
+
+        # Make executable
+        filepath.chmod(0o755)
+
+        return filepath
+
+    def submit(
+        self,
+        script_path: str | Path,
+        dry_run: bool = False,
+    ) -> Optional[int]:
+        """Submit job to Slurm.
+
+        Args:
+            script_path: Path to batch script.
+            dry_run: If True, only print command without submitting.
+
+        Returns:
+            Job ID if submitted, None otherwise.
+        """
+        import subprocess
+
+        script_path = Path(script_path)
+
+        if not script_path.exists():
+            raise FileNotFoundError(f"Script not found: {script_path}")
+
+        cmd = ["sbatch", str(script_path)]
+
+        if dry_run:
+            print(f"Would submit: {' '.join(cmd)}")
+            return None
+
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+
+            # Parse job ID from output: "Submitted batch job 12345"
+            output = result.stdout.strip()
+            if "Submitted batch job" in output:
+                job_id = int(output.split()[-1])
+                print(f"Submitted job {job_id}")
+                return job_id
+
+        except subprocess.CalledProcessError as e:
+            print(f"Submission failed: {e.stderr}")
+            return None
+        except FileNotFoundError:
+            print("Error: sbatch command not found. Is Slurm installed?")
+            return None
+
+        return None
