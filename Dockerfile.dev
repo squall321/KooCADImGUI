@@ -1,0 +1,65 @@
+FROM python:3.11-slim
+
+LABEL maintainer="KooCAD Team <dev@koocad.com>"
+LABEL description="Development container for KooCAD Parametric CAD System"
+
+# Prevent Python from buffering stdout/stderr
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    # Build tools
+    build-essential \
+    cmake \
+    git \
+    # OCCT dependencies
+    libocct-foundation-dev \
+    libocct-modeling-data-dev \
+    libocct-modeling-algorithms-dev \
+    libocct-visualization-dev \
+    libocct-data-exchange-dev \
+    # Graphics libraries (for DearPyGui)
+    libgl1-mesa-glx \
+    libglu1-mesa \
+    libxrandr2 \
+    libxinerama1 \
+    libxcursor1 \
+    libxi6 \
+    # Mesh libraries
+    libgmsh-dev \
+    gmsh \
+    # Utilities
+    curl \
+    wget \
+    vim \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy dependency files
+COPY pyproject.toml ./
+
+# Install Python dependencies
+RUN pip install --upgrade pip setuptools wheel && \
+    pip install -e ".[all]"
+
+# Copy source code
+COPY src/ ./src/
+COPY tests/ ./tests/
+COPY scripts/ ./scripts/
+
+# Create data directories
+RUN mkdir -p /app/data/{params,results,cache} \
+    /app/logs
+
+# Expose ports
+# 8000: FastAPI
+# 5555: Flower
+EXPOSE 8000 5555
+
+# Default command (override in docker-compose)
+CMD ["uvicorn", "koocad.api.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]

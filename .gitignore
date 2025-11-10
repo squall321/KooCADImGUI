@@ -1,0 +1,159 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+coverage.xml
+*.cover
+.cache
+nosetests.xml
+
+# Jupyter
+.ipynb_checkpoints
+*.ipynb
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Documentation
+docs/_build/
+docs/_static/
+docs/_templates/
+site/
+
+# CAD files (large binaries)
+*.step
+*.stp
+*.STEP
+*.STP
+*.iges
+*.igs
+*.IGES
+*.IGS
+*.stl
+*.STL
+*.glb
+*.GLB
+*.gltf
+*.brep
+*.BREP
+
+# Mesh files
+*.msh
+*.k
+*.inp
+*.unv
+*.med
+*.vtk
+*.vtu
+
+# Data
+data/results/
+data/cache/
+*.h5
+*.hdf5
+*.db
+*.sqlite3
+
+# Logs
+logs/
+*.log
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Docker
+docker-compose.override.yml
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# OS
+Thumbs.db
+.Trash-*
+
+# Secrets
+secrets/
+*.pem
+*.key
+credentials.json
+
+# MinIO
+minio-data/
+
+# PostgreSQL
+postgres-data/
+
+# Redis
+redis-data/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Profiling
+*.prof
+*.lprof
+
+# Benchmarks
+.benchmarks/
+
+# Build artifacts (C++)
+*.o
+*.a
+*.lib
+*.dll
+*.dylib
+*.so.*
+cmake-build-*/
+CMakeCache.txt
+CMakeFiles/
