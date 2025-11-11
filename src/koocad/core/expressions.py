@@ -6,10 +6,10 @@ support for complex mathematical operations, functions, and constraints.
 """
 
 import operator
-from typing import Any, Callable, Dict, List, Optional, Set
+from collections.abc import Callable
 
 import sympy as sp
-from sympy import Symbol, sympify
+from sympy import Symbol
 from sympy.parsing.sympy_parser import parse_expr
 
 
@@ -17,7 +17,7 @@ class ExpressionEngine:
     """Advanced expression engine with function support."""
 
     # Built-in functions
-    FUNCTIONS: Dict[str, Callable] = {
+    FUNCTIONS: dict[str, Callable] = {
         "sqrt": sp.sqrt,
         "sin": sp.sin,
         "cos": sp.cos,
@@ -33,7 +33,7 @@ class ExpressionEngine:
     }
 
     # Operators
-    OPERATORS: Dict[str, Callable] = {
+    OPERATORS: dict[str, Callable] = {
         "+": operator.add,
         "-": operator.sub,
         "*": operator.mul,
@@ -44,8 +44,8 @@ class ExpressionEngine:
 
     def __init__(self) -> None:
         """Initialize expression engine."""
-        self.custom_functions: Dict[str, Callable] = {}
-        self.constants: Dict[str, float] = {
+        self.custom_functions: dict[str, Callable] = {}
+        self.constants: dict[str, float] = {
             "pi": float(sp.pi),
             "e": float(sp.E),
         }
@@ -105,7 +105,7 @@ class ExpressionEngine:
         except Exception as e:
             raise ValueError(f"Invalid expression '{expression}': {e}")
 
-    def extract_variables(self, expression: str) -> Set[str]:
+    def extract_variables(self, expression: str) -> set[str]:
         """Extract variable names from expression.
 
         Args:
@@ -127,7 +127,7 @@ class ExpressionEngine:
     def evaluate(
         self,
         expression: str,
-        context: Dict[str, float],
+        context: dict[str, float],
         *,
         validate: bool = True,
     ) -> float:
@@ -211,7 +211,7 @@ class ExpressionEngine:
         derivative = sp.diff(expr, var)
         return str(derivative)
 
-    def solve(self, expression: str, variable: str) -> List[float]:
+    def solve(self, expression: str, variable: str) -> list[float]:
         """Solve equation for variable.
 
         Args:
@@ -237,8 +237,8 @@ class DependencyGraph:
 
     def __init__(self) -> None:
         """Initialize dependency graph."""
-        self.nodes: Set[str] = set()
-        self.edges: Dict[str, Set[str]] = {}
+        self.nodes: set[str] = set()
+        self.edges: dict[str, set[str]] = {}
 
     def add_node(self, name: str) -> None:
         """Add a node to the graph."""
@@ -257,7 +257,7 @@ class DependencyGraph:
         self.add_node(to_node)
         self.edges[from_node].add(to_node)
 
-    def topological_sort(self) -> List[str]:
+    def topological_sort(self) -> list[str]:
         """Perform topological sort to get evaluation order.
 
         Returns:
@@ -275,7 +275,7 @@ class DependencyGraph:
             ['a', 'b', 'c']
         """
         # Kahn's algorithm
-        in_degree = {node: 0 for node in self.nodes}
+        in_degree = dict.fromkeys(self.nodes, 0)
 
         for node in self.nodes:
             for neighbor in self.edges[node]:
@@ -300,7 +300,7 @@ class DependencyGraph:
 
         return result
 
-    def get_dependencies(self, node: str) -> Set[str]:
+    def get_dependencies(self, node: str) -> set[str]:
         """Get all dependencies of a node (transitive closure).
 
         Args:

@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Any, Dict, Optional, Type, TypeVar, Union
+from typing import Any, TypeVar
 
 try:
     import msgpack
@@ -49,7 +49,7 @@ class ParameterSerializer:
     """Serialize and deserialize parameters."""
 
     @staticmethod
-    def parameter_to_dict(param: Parameter) -> Dict[str, Any]:
+    def parameter_to_dict(param: Parameter) -> dict[str, Any]:
         """Convert parameter to dictionary.
 
         Args:
@@ -91,7 +91,7 @@ class ParameterSerializer:
         return base_dict
 
     @staticmethod
-    def dict_to_parameter(data: Dict[str, Any]) -> Parameter:
+    def dict_to_parameter(data: dict[str, Any]) -> Parameter:
         """Convert dictionary to parameter.
 
         Args:
@@ -142,7 +142,7 @@ class ParameterSerializer:
             raise ValueError(f"Unknown parameter type: {param_type}")
 
     @staticmethod
-    def parameter_set_to_dict(param_set: ParameterSet) -> Dict[str, Any]:
+    def parameter_set_to_dict(param_set: ParameterSet) -> dict[str, Any]:
         """Convert parameter set to dictionary.
 
         Args:
@@ -152,12 +152,15 @@ class ParameterSerializer:
             Dictionary representation.
         """
         return {
-            "parameters": [ParameterSerializer.parameter_to_dict(param) for param in param_set.parameters.values()],
+            "parameters": [
+                ParameterSerializer.parameter_to_dict(param)
+                for param in param_set.parameters.values()
+            ],
             "version": "1.0",
         }
 
     @staticmethod
-    def dict_to_parameter_set(data: Dict[str, Any]) -> ParameterSet:
+    def dict_to_parameter_set(data: dict[str, Any]) -> ParameterSet:
         """Convert dictionary to parameter set.
 
         Args:
@@ -206,7 +209,7 @@ class JSONSerializer:
         return ParameterSerializer.dict_to_parameter_set(data)
 
     @staticmethod
-    def save(param_set: ParameterSet, file_path: Union[str, Path]) -> None:
+    def save(param_set: ParameterSet, file_path: str | Path) -> None:
         """Save parameter set to JSON file.
 
         Args:
@@ -217,7 +220,7 @@ class JSONSerializer:
         path.write_text(JSONSerializer.serialize(param_set))
 
     @staticmethod
-    def load(file_path: Union[str, Path]) -> ParameterSet:
+    def load(file_path: str | Path) -> ParameterSet:
         """Load parameter set from JSON file.
 
         Args:
@@ -272,7 +275,7 @@ class MessagePackSerializer:
         return ParameterSerializer.dict_to_parameter_set(unpacked)
 
     @staticmethod
-    def save(param_set: ParameterSet, file_path: Union[str, Path]) -> None:
+    def save(param_set: ParameterSet, file_path: str | Path) -> None:
         """Save parameter set to MessagePack file.
 
         Args:
@@ -283,7 +286,7 @@ class MessagePackSerializer:
         path.write_bytes(MessagePackSerializer.serialize(param_set))
 
     @staticmethod
-    def load(file_path: Union[str, Path]) -> ParameterSet:
+    def load(file_path: str | Path) -> ParameterSet:
         """Load parameter set from MessagePack file.
 
         Args:
@@ -341,7 +344,7 @@ class UniversalSerializer:
     def serialize(
         param_set: ParameterSet,
         format: SerializationFormat = SerializationFormat.JSON,
-    ) -> Union[str, bytes]:
+    ) -> str | bytes:
         """Serialize parameter set in specified format.
 
         Args:
@@ -362,7 +365,7 @@ class UniversalSerializer:
 
     @staticmethod
     def deserialize(
-        data: Union[str, bytes],
+        data: str | bytes,
         format: SerializationFormat = SerializationFormat.JSON,
     ) -> ParameterSet:
         """Deserialize parameter set from specified format.
@@ -386,8 +389,8 @@ class UniversalSerializer:
     @staticmethod
     def save(
         param_set: ParameterSet,
-        file_path: Union[str, Path],
-        format: Optional[SerializationFormat] = None,
+        file_path: str | Path,
+        format: SerializationFormat | None = None,
     ) -> None:
         """Save parameter set to file.
 
@@ -421,8 +424,8 @@ class UniversalSerializer:
 
     @staticmethod
     def load(
-        file_path: Union[str, Path],
-        format: Optional[SerializationFormat] = None,
+        file_path: str | Path,
+        format: SerializationFormat | None = None,
     ) -> ParameterSet:
         """Load parameter set from file.
 

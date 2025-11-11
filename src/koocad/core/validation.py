@@ -8,9 +8,10 @@ from __future__ import annotations
 
 import asyncio
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Callable, List, Optional, Protocol
+from typing import Any
 
 from koocad.core.parameters import Parameter, ParameterSet
 
@@ -30,8 +31,8 @@ class ValidationResult:
     is_valid: bool
     severity: ValidationSeverity
     message: str
-    parameter_name: Optional[str] = None
-    suggested_value: Optional[Any] = None
+    parameter_name: str | None = None
+    suggested_value: Any | None = None
 
     def __bool__(self) -> bool:
         """Allow truthiness check."""
@@ -41,7 +42,9 @@ class ValidationResult:
 class Validator(ABC):
     """Base class for parameter validators."""
 
-    def __init__(self, message: str = "", severity: ValidationSeverity = ValidationSeverity.ERROR) -> None:
+    def __init__(
+        self, message: str = "", severity: ValidationSeverity = ValidationSeverity.ERROR
+    ) -> None:
         """Initialize validator.
 
         Args:
@@ -74,8 +77,8 @@ class RangeValidator(Validator):
 
     def __init__(
         self,
-        min_value: Optional[float] = None,
-        max_value: Optional[float] = None,
+        min_value: float | None = None,
+        max_value: float | None = None,
         **kwargs: Any,
     ) -> None:
         """Initialize range validator.
@@ -184,7 +187,9 @@ class FunctionValidator(Validator):
 class AsyncValidator(ABC):
     """Base class for async validators (e.g., external API calls)."""
 
-    def __init__(self, message: str = "", severity: ValidationSeverity = ValidationSeverity.ERROR) -> None:
+    def __init__(
+        self, message: str = "", severity: ValidationSeverity = ValidationSeverity.ERROR
+    ) -> None:
         """Initialize async validator."""
         self.message = message
         self.severity = severity
@@ -206,14 +211,14 @@ class AsyncValidator(ABC):
 class ValidatorChain:
     """Chain of validators to run sequentially."""
 
-    def __init__(self, validators: Optional[List[Validator]] = None) -> None:
+    def __init__(self, validators: list[Validator] | None = None) -> None:
         """Initialize validator chain.
 
         Args:
             validators: List of validators to add to chain.
         """
-        self.validators: List[Validator] = validators or []
-        self.async_validators: List[AsyncValidator] = []
+        self.validators: list[Validator] = validators or []
+        self.async_validators: list[AsyncValidator] = []
 
     def add(self, validator: Validator) -> ValidatorChain:
         """Add validator to chain.
@@ -239,7 +244,7 @@ class ValidatorChain:
         self.async_validators.append(validator)
         return self
 
-    def validate(self, value: Any, param: Parameter) -> List[ValidationResult]:
+    def validate(self, value: Any, param: Parameter) -> list[ValidationResult]:
         """Run all synchronous validators.
 
         Args:
@@ -249,7 +254,7 @@ class ValidatorChain:
         Returns:
             List of validation results.
         """
-        results: List[ValidationResult] = []
+        results: list[ValidationResult] = []
 
         for validator in self.validators:
             result = validator.validate(value, param)
@@ -261,7 +266,7 @@ class ValidatorChain:
 
         return results
 
-    async def validate_async(self, value: Any, param: Parameter) -> List[ValidationResult]:
+    async def validate_async(self, value: Any, param: Parameter) -> list[ValidationResult]:
         """Run all validators including async ones.
 
         Args:
@@ -280,7 +285,9 @@ class ValidatorChain:
             return results
 
         # Run async validators
-        async_tasks = [validator.validate_async(value, param) for validator in self.async_validators]
+        async_tasks = [
+            validator.validate_async(value, param) for validator in self.async_validators
+        ]
         async_results = await asyncio.gather(*async_tasks, return_exceptions=True)
 
         for result in async_results:
@@ -318,7 +325,7 @@ class ParameterSetValidator:
 
         self.validators[param_name].add(validator)
 
-    def validate(self, param_set: ParameterSet) -> dict[str, List[ValidationResult]]:
+    def validate(self, param_set: ParameterSet) -> dict[str, list[ValidationResult]]:
         """Validate entire parameter set.
 
         Args:
@@ -327,7 +334,7 @@ class ParameterSetValidator:
         Returns:
             Dictionary mapping parameter names to validation results.
         """
-        all_results: dict[str, List[ValidationResult]] = {}
+        all_results: dict[str, list[ValidationResult]] = {}
 
         for param_name, param in param_set.parameters.items():
             if param_name in self.validators:
@@ -336,7 +343,7 @@ class ParameterSetValidator:
 
         return all_results
 
-    async def validate_async(self, param_set: ParameterSet) -> dict[str, List[ValidationResult]]:
+    async def validate_async(self, param_set: ParameterSet) -> dict[str, list[ValidationResult]]:
         """Validate entire parameter set including async validators.
 
         Args:
@@ -345,7 +352,7 @@ class ParameterSetValidator:
         Returns:
             Dictionary mapping parameter names to validation results.
         """
-        all_results: dict[str, List[ValidationResult]] = {}
+        all_results: dict[str, list[ValidationResult]] = {}
 
         # Run all validations concurrently
         tasks = []
@@ -363,7 +370,9 @@ class ParameterSetValidator:
 
         return all_results
 
-    def get_errors(self, results: dict[str, List[ValidationResult]]) -> dict[str, List[ValidationResult]]:
+    def get_errors(
+        self, results: dict[str, list[ValidationResult]]
+    ) -> dict[str, list[ValidationResult]]:
         """Filter results to only errors.
 
         Args:
@@ -372,16 +381,22 @@ class ParameterSetValidator:
         Returns:
             Dictionary of parameters with errors.
         """
-        errors: dict[str, List[ValidationResult]] = {}
+        errors: dict[str, list[ValidationResult]] = {}
 
         for param_name, param_results in results.items():
-            error_results = [r for r in param_results if not r.is_valid and r.severity == ValidationSeverity.ERROR]
+            error_results = [
+                r
+                for r in param_results
+                if not r.is_valid and r.severity == ValidationSeverity.ERROR
+            ]
             if error_results:
                 errors[param_name] = error_results
 
         return errors
 
-    def get_warnings(self, results: dict[str, List[ValidationResult]]) -> dict[str, List[ValidationResult]]:
+    def get_warnings(
+        self, results: dict[str, list[ValidationResult]]
+    ) -> dict[str, list[ValidationResult]]:
         """Filter results to only warnings.
 
         Args:
@@ -390,11 +405,13 @@ class ParameterSetValidator:
         Returns:
             Dictionary of parameters with warnings.
         """
-        warnings: dict[str, List[ValidationResult]] = {}
+        warnings: dict[str, list[ValidationResult]] = {}
 
         for param_name, param_results in results.items():
             warning_results = [
-                r for r in param_results if not r.is_valid and r.severity == ValidationSeverity.WARNING
+                r
+                for r in param_results
+                if not r.is_valid and r.severity == ValidationSeverity.WARNING
             ]
             if warning_results:
                 warnings[param_name] = warning_results

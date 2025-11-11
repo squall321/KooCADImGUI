@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -120,7 +120,7 @@ class Shape(ABC):
         self,
         path: str | Path,
         *,
-        material: Optional[dict[str, Any]] = None,
+        material: dict[str, Any] | None = None,
     ) -> None:
         """Export to GLB/glTF 2.0 format.
 
@@ -150,7 +150,7 @@ class Shape(ABC):
         axis: tuple[float, float, float],
         angle: float,
         *,
-        center: Optional[tuple[float, float, float]] = None,
+        center: tuple[float, float, float] | None = None,
     ) -> Shape:
         """Rotate shape around axis.
 
@@ -169,7 +169,7 @@ class Shape(ABC):
         self,
         plane_normal: tuple[float, float, float],
         *,
-        plane_point: Optional[tuple[float, float, float]] = None,
+        plane_point: tuple[float, float, float] | None = None,
     ) -> Shape:
         """Mirror shape across plane.
 

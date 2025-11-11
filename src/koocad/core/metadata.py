@@ -10,9 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Optional, Set
+from typing import Any
 
-from koocad.core.parameters import Parameter, ParameterSet
+from koocad.core.parameters import ParameterSet
 
 
 class ParameterCategory(Enum):
@@ -39,34 +39,34 @@ class ParameterMetadata:
     category: ParameterCategory = ParameterCategory.OTHER
 
     # Tags for search and filtering
-    tags: Set[str] = field(default_factory=set)
+    tags: set[str] = field(default_factory=set)
 
     # Documentation
     tooltip: str = ""
-    help_url: Optional[str] = None
-    example_values: List[Any] = field(default_factory=list)
+    help_url: str | None = None
+    example_values: list[Any] = field(default_factory=list)
 
     # Provenance
-    created_by: Optional[str] = None
-    created_at: Optional[datetime] = None
-    modified_by: Optional[str] = None
-    modified_at: Optional[datetime] = None
+    created_by: str | None = None
+    created_at: datetime | None = None
+    modified_by: str | None = None
+    modified_at: datetime | None = None
 
     # Engineering context
-    standard: Optional[str] = None  # e.g., "JEDEC", "IPC-7351", "EIA"
-    reference: Optional[str] = None  # Document reference
+    standard: str | None = None  # e.g., "JEDEC", "IPC-7351", "EIA"
+    reference: str | None = None  # Document reference
 
     # UI hints
     ui_order: int = 0  # Display order in UI
-    ui_group: Optional[str] = None  # Group in UI
+    ui_group: str | None = None  # Group in UI
     ui_readonly: bool = False
     ui_hidden: bool = False
 
     # Validation hints
-    warning_threshold: Optional[float] = None
-    critical_threshold: Optional[float] = None
+    warning_threshold: float | None = None
+    critical_threshold: float | None = None
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert metadata to dictionary."""
         return {
             "display_name": self.display_name,
@@ -91,7 +91,7 @@ class ParameterMetadata:
         }
 
     @staticmethod
-    def from_dict(data: Dict[str, Any]) -> ParameterMetadata:
+    def from_dict(data: dict[str, Any]) -> ParameterMetadata:
         """Create metadata from dictionary."""
         return ParameterMetadata(
             display_name=data.get("display_name", ""),
@@ -102,9 +102,13 @@ class ParameterMetadata:
             help_url=data.get("help_url"),
             example_values=data.get("example_values", []),
             created_by=data.get("created_by"),
-            created_at=datetime.fromisoformat(data["created_at"]) if data.get("created_at") else None,
+            created_at=(
+                datetime.fromisoformat(data["created_at"]) if data.get("created_at") else None
+            ),
             modified_by=data.get("modified_by"),
-            modified_at=datetime.fromisoformat(data["modified_at"]) if data.get("modified_at") else None,
+            modified_at=(
+                datetime.fromisoformat(data["modified_at"]) if data.get("modified_at") else None
+            ),
             standard=data.get("standard"),
             reference=data.get("reference"),
             ui_order=data.get("ui_order", 0),
@@ -121,7 +125,7 @@ class MetadataRegistry:
 
     def __init__(self) -> None:
         """Initialize metadata registry."""
-        self.metadata: Dict[str, ParameterMetadata] = {}
+        self.metadata: dict[str, ParameterMetadata] = {}
 
     def register(self, param_name: str, metadata: ParameterMetadata) -> None:
         """Register metadata for parameter.
@@ -132,7 +136,7 @@ class MetadataRegistry:
         """
         self.metadata[param_name] = metadata
 
-    def get(self, param_name: str) -> Optional[ParameterMetadata]:
+    def get(self, param_name: str) -> ParameterMetadata | None:
         """Get metadata for parameter.
 
         Args:
@@ -143,7 +147,7 @@ class MetadataRegistry:
         """
         return self.metadata.get(param_name)
 
-    def search_by_tag(self, tag: str) -> List[str]:
+    def search_by_tag(self, tag: str) -> list[str]:
         """Search parameters by tag.
 
         Args:
@@ -154,7 +158,7 @@ class MetadataRegistry:
         """
         return [name for name, meta in self.metadata.items() if tag in meta.tags]
 
-    def search_by_category(self, category: ParameterCategory) -> List[str]:
+    def search_by_category(self, category: ParameterCategory) -> list[str]:
         """Search parameters by category.
 
         Args:
@@ -165,7 +169,7 @@ class MetadataRegistry:
         """
         return [name for name, meta in self.metadata.items() if meta.category == category]
 
-    def search_by_text(self, query: str) -> List[str]:
+    def search_by_text(self, query: str) -> list[str]:
         """Full-text search in metadata.
 
         Args:
@@ -193,13 +197,13 @@ class MetadataRegistry:
 
         return results
 
-    def get_ui_groups(self) -> Dict[str, List[str]]:
+    def get_ui_groups(self) -> dict[str, list[str]]:
         """Get parameters organized by UI group.
 
         Returns:
             Dictionary mapping group names to parameter names.
         """
-        groups: Dict[str, List[str]] = {}
+        groups: dict[str, list[str]] = {}
 
         for name, meta in self.metadata.items():
             group = meta.ui_group or "General"
@@ -243,7 +247,7 @@ class DocumentationGenerator:
         ]
 
         # Group by category
-        categories: Dict[ParameterCategory, List[str]] = {}
+        categories: dict[ParameterCategory, list[str]] = {}
         for name in param_set.parameters.keys():
             meta = registry.get(name)
             category = meta.category if meta else ParameterCategory.OTHER
@@ -341,7 +345,7 @@ class DocumentationGenerator:
         ]
 
         # Group by category
-        categories: Dict[ParameterCategory, List[str]] = {}
+        categories: dict[ParameterCategory, list[str]] = {}
         for name in param_set.parameters.keys():
             meta = registry.get(name)
             category = meta.category if meta else ParameterCategory.OTHER
@@ -364,11 +368,15 @@ class DocumentationGenerator:
 
                 display_name = meta.display_name if meta and meta.display_name else param_name
                 html_parts.append(f"<h3>{display_name}</h3>")
-                html_parts.append(f"<p class='meta'><strong>Name:</strong> <code>{param_name}</code></p>")
+                html_parts.append(
+                    f"<p class='meta'><strong>Name:</strong> <code>{param_name}</code></p>"
+                )
                 html_parts.append(
                     f"<p class='meta'><strong>Type:</strong> <code>{param.__class__.__name__}</code></p>"
                 )
-                html_parts.append(f"<p class='meta'><strong>Default:</strong> <code>{param.value}</code></p>")
+                html_parts.append(
+                    f"<p class='meta'><strong>Default:</strong> <code>{param.value}</code></p>"
+                )
 
                 if meta and meta.description:
                     html_parts.append(f"<p>{meta.description}</p>")

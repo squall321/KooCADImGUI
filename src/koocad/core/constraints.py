@@ -5,7 +5,8 @@ This module provides constraint solving capabilities for ensuring
 parameter values satisfy all defined constraints.
 """
 
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple
+from collections.abc import Callable
+from typing import Any
 
 from koocad.core.parameters import Parameter
 
@@ -13,7 +14,7 @@ from koocad.core.parameters import Parameter
 class Constraint:
     """Base class for constraints."""
 
-    def __init__(self, variables: List[str], predicate: Callable[..., bool]) -> None:
+    def __init__(self, variables: list[str], predicate: Callable[..., bool]) -> None:
         """Initialize constraint.
 
         Args:
@@ -23,7 +24,7 @@ class Constraint:
         self.variables = variables
         self.predicate = predicate
 
-    def is_satisfied(self, assignment: Dict[str, Any]) -> bool:
+    def is_satisfied(self, assignment: dict[str, Any]) -> bool:
         """Check if constraint is satisfied with given assignment.
 
         Args:
@@ -88,11 +89,11 @@ class CSPSolver:
 
     def __init__(self) -> None:
         """Initialize CSP solver."""
-        self.variables: Set[str] = set()
-        self.domains: Dict[str, List[Any]] = {}
-        self.constraints: List[Constraint] = []
+        self.variables: set[str] = set()
+        self.domains: dict[str, list[Any]] = {}
+        self.constraints: list[Constraint] = []
 
-    def add_variable(self, name: str, domain: List[Any]) -> None:
+    def add_variable(self, name: str, domain: list[Any]) -> None:
         """Add a variable with its domain.
 
         Args:
@@ -118,7 +119,7 @@ class CSPSolver:
         self,
         variable: str,
         value: Any,
-        assignment: Dict[str, Any],
+        assignment: dict[str, Any],
     ) -> bool:
         """Check if assigning value to variable is consistent with constraints.
 
@@ -141,8 +142,8 @@ class CSPSolver:
 
     def backtrack(
         self,
-        assignment: Dict[str, Any],
-    ) -> Optional[Dict[str, Any]]:
+        assignment: dict[str, Any],
+    ) -> dict[str, Any] | None:
         """Backtracking search for solution.
 
         Args:
@@ -172,7 +173,7 @@ class CSPSolver:
 
         return None
 
-    def solve(self) -> Optional[Dict[str, Any]]:
+    def solve(self) -> dict[str, Any] | None:
         """Find a solution to the CSP.
 
         Returns:
@@ -189,7 +190,7 @@ class CSPSolver:
         """
         return self.backtrack({})
 
-    def find_all_solutions(self, max_solutions: int = 100) -> List[Dict[str, Any]]:
+    def find_all_solutions(self, max_solutions: int = 100) -> list[dict[str, Any]]:
         """Find all solutions (or up to max).
 
         Args:
@@ -198,9 +199,9 @@ class CSPSolver:
         Returns:
             List of solutions.
         """
-        solutions: List[Dict[str, Any]] = []
+        solutions: list[dict[str, Any]] = []
 
-        def backtrack_all(assignment: Dict[str, Any]) -> None:
+        def backtrack_all(assignment: dict[str, Any]) -> None:
             if len(solutions) >= max_solutions:
                 return
 
@@ -230,7 +231,7 @@ class ConstraintPropagator:
     @staticmethod
     def arc_consistency(
         solver: CSPSolver,
-    ) -> Tuple[bool, Dict[str, List[Any]]]:
+    ) -> tuple[bool, dict[str, list[Any]]]:
         """Apply arc consistency (AC-3 algorithm).
 
         Args:
@@ -251,7 +252,7 @@ class ConstraintPropagator:
         domains = {var: list(domain) for var, domain in solver.domains.items()}
 
         # Create queue of arcs
-        queue: List[Tuple[str, Constraint]] = []
+        queue: list[tuple[str, Constraint]] = []
         for constraint in solver.constraints:
             for variable in constraint.variables:
                 queue.append((variable, constraint))
@@ -276,7 +277,7 @@ class ConstraintPropagator:
 def _revise(
     variable: str,
     constraint: Constraint,
-    domains: Dict[str, List[Any]],
+    domains: dict[str, list[Any]],
 ) -> bool:
     """Revise domain of variable based on constraint.
 
@@ -320,9 +321,9 @@ class ParameterConstraintChecker:
 
     @staticmethod
     def check_constraints(
-        parameters: Dict[str, Parameter],
-        values: Dict[str, Any],
-    ) -> Tuple[bool, List[str]]:
+        parameters: dict[str, Parameter],
+        values: dict[str, Any],
+    ) -> tuple[bool, list[str]]:
         """Check if parameter values satisfy all constraints.
 
         Args:
@@ -353,8 +354,6 @@ class ParameterConstraintChecker:
             # Check parameter constraints
             for constraint in param.constraints:
                 if not constraint.validate(value):
-                    errors.append(
-                        f"Parameter '{name}': {constraint.message} (value={value})"
-                    )
+                    errors.append(f"Parameter '{name}': {constraint.message} (value={value})")
 
         return len(errors) == 0, errors

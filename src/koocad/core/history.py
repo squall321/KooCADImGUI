@@ -9,7 +9,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 from koocad.core.parameters import Parameter, ParameterSet
 
@@ -62,7 +62,7 @@ class SetParameterValueCommand(Command):
         self.param_set = param_set
         self.param_name = param_name
         self.new_value = new_value
-        self.old_value: Optional[Any] = None
+        self.old_value: Any | None = None
 
     def execute(self) -> None:
         """Execute command."""
@@ -124,7 +124,7 @@ class RemoveParameterCommand(Command):
         super().__init__()
         self.param_set = param_set
         self.param_name = param_name
-        self.removed_parameter: Optional[Parameter] = None
+        self.removed_parameter: Parameter | None = None
 
     def execute(self) -> None:
         """Execute command."""
@@ -156,7 +156,7 @@ class History:
             max_size: Maximum number of commands to store.
         """
         self.max_size = max_size
-        self.commands: List[Command] = []
+        self.commands: list[Command] = []
         self.current_index: int = -1
 
     def execute(self, command: Command) -> None:
@@ -194,7 +194,7 @@ class History:
         """Check if redo is available."""
         return self.current_index < len(self.commands) - 1
 
-    def undo(self) -> Optional[str]:
+    def undo(self) -> str | None:
         """Undo last command.
 
         Returns:
@@ -214,7 +214,7 @@ class History:
 
         return command.description()
 
-    def redo(self) -> Optional[str]:
+    def redo(self) -> str | None:
         """Redo next command.
 
         Returns:
@@ -229,7 +229,7 @@ class History:
 
         return command.description()
 
-    def get_history(self, limit: int = 10) -> List[Dict[str, Any]]:
+    def get_history(self, limit: int = 10) -> list[dict[str, Any]]:
         """Get recent command history.
 
         Args:
@@ -244,12 +244,14 @@ class History:
         history_items = []
         for i in range(start_idx, end_idx):
             cmd = self.commands[i]
-            history_items.append({
-                "index": i,
-                "description": cmd.description(),
-                "timestamp": cmd.timestamp.isoformat(),
-                "is_current": i == self.current_index,
-            })
+            history_items.append(
+                {
+                    "index": i,
+                    "description": cmd.description(),
+                    "timestamp": cmd.timestamp.isoformat(),
+                    "is_current": i == self.current_index,
+                }
+            )
 
         return history_items
 
@@ -264,11 +266,11 @@ class Snapshot:
     """Snapshot of parameter set state."""
 
     timestamp: datetime
-    parameters: Dict[str, Any]
+    parameters: dict[str, Any]
     version: int
     description: str = ""
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert to dictionary."""
         return {
             "timestamp": self.timestamp.isoformat(),
@@ -283,7 +285,7 @@ class SnapshotManager:
 
     def __init__(self) -> None:
         """Initialize snapshot manager."""
-        self.snapshots: List[Snapshot] = []
+        self.snapshots: list[Snapshot] = []
 
     def take_snapshot(
         self,
@@ -305,10 +307,7 @@ class SnapshotManager:
         """
         snapshot = Snapshot(
             timestamp=datetime.now(),
-            parameters={
-                name: param.value
-                for name, param in param_set.parameters.items()
-            },
+            parameters={name: param.value for name, param in param_set.parameters.items()},
             version=len(self.snapshots) + 1,
             description=description,
         )
@@ -340,11 +339,11 @@ class SnapshotManager:
             if param is not None:
                 param.value = value
 
-    def get_latest_snapshot(self) -> Optional[Snapshot]:
+    def get_latest_snapshot(self) -> Snapshot | None:
         """Get most recent snapshot."""
         return self.snapshots[-1] if self.snapshots else None
 
-    def list_snapshots(self) -> List[Dict[str, Any]]:
+    def list_snapshots(self) -> list[dict[str, Any]]:
         """List all snapshots.
 
         Returns:
@@ -364,7 +363,7 @@ class SnapshotManager:
         self,
         snapshot1_index: int,
         snapshot2_index: int,
-    ) -> Dict[str, tuple[Any, Any]]:
+    ) -> dict[str, tuple[Any, Any]]:
         """Compute diff between two snapshots.
 
         Args:
@@ -382,7 +381,7 @@ class SnapshotManager:
         snap1 = self.snapshots[snapshot1_index]
         snap2 = self.snapshots[snapshot2_index]
 
-        diff: Dict[str, tuple[Any, Any]] = {}
+        diff: dict[str, tuple[Any, Any]] = {}
 
         all_params = set(snap1.parameters.keys()) | set(snap2.parameters.keys())
 

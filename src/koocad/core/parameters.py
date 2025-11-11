@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Any, Generic, Optional, TypeVar
+from typing import Any, Generic, TypeVar
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -43,8 +43,8 @@ class RangeConstraint(Constraint):
     """Min/max range constraint."""
 
     type: str = "range"
-    min_value: Optional[float] = None
-    max_value: Optional[float] = None
+    min_value: float | None = None
+    max_value: float | None = None
 
     def validate(self, value: float) -> bool:
         """Check if value is within range."""
@@ -61,15 +61,13 @@ class Parameter(ABC, BaseModel, Generic[T]):
     name: str = Field(..., description="Parameter name")
     description: str = Field("", description="Human-readable description")
     value: T = Field(..., description="Current value")
-    default_value: Optional[T] = Field(None, description="Default value")
-    unit: Optional[Unit] = Field(None, description="Measurement unit")
+    default_value: T | None = Field(None, description="Default value")
+    unit: Unit | None = Field(None, description="Measurement unit")
     constraints: list[Constraint] = Field(
         default_factory=list, description="Validation constraints"
     )
     tags: list[str] = Field(default_factory=list, description="Searchable tags")
-    metadata: dict[str, Any] = Field(
-        default_factory=dict, description="Additional metadata"
-    )
+    metadata: dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -92,8 +90,8 @@ class FloatParameter(Parameter[float]):
     """Floating-point parameter with optional range constraints."""
 
     value: float
-    min_value: Optional[float] = None
-    max_value: Optional[float] = None
+    min_value: float | None = None
+    max_value: float | None = None
     step: float = 0.1
 
     def __init__(self, **data: Any):
@@ -130,8 +128,8 @@ class IntParameter(Parameter[int]):
     """Integer parameter."""
 
     value: int
-    min_value: Optional[int] = None
-    max_value: Optional[int] = None
+    min_value: int | None = None
+    max_value: int | None = None
     step: int = 1
 
     def to_base_unit(self) -> float:
@@ -153,7 +151,7 @@ class StrParameter(Parameter[str]):
     """String parameter."""
 
     value: str
-    max_length: Optional[int] = None
+    max_length: int | None = None
 
     def to_base_unit(self) -> float:
         """Not applicable for strings."""
@@ -243,7 +241,7 @@ class ParameterSet(BaseModel):
         default_factory=dict, description="Parameter name -> Parameter object"
     )
     version: int = Field(1, description="Version number for tracking changes")
-    checksum: Optional[str] = Field(None, description="SHA256 checksum of parameters")
+    checksum: str | None = Field(None, description="SHA256 checksum of parameters")
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -251,7 +249,7 @@ class ParameterSet(BaseModel):
         """Add parameter to set."""
         self.parameters[param.name] = param
 
-    def get(self, name: str) -> Optional[Parameter]:
+    def get(self, name: str) -> Parameter | None:
         """Get parameter by name."""
         return self.parameters.get(name)
 
@@ -350,6 +348,6 @@ class ParameterSet(BaseModel):
         data = json.dumps(self.to_dict(), sort_keys=True)
         return hashlib.sha256(data.encode()).hexdigest()
 
+
 # Aliases for compatibility
 StringParameter = StrParameter
-

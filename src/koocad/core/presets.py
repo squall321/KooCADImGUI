@@ -5,8 +5,6 @@ This module provides predefined parameter sets following industry standards
 like JEDEC, IPC, EIA, etc.
 """
 
-from typing import Dict, List, Optional
-
 from koocad.core.parameters import (
     EnumParameter,
     FloatParameter,
@@ -21,7 +19,7 @@ class PresetLibrary:
 
     def __init__(self) -> None:
         """Initialize preset library."""
-        self.presets: Dict[str, ParameterSet] = {}
+        self.presets: dict[str, ParameterSet] = {}
         self._load_standard_presets()
 
     def _load_standard_presets(self) -> None:
@@ -35,7 +33,7 @@ class PresetLibrary:
         # Resistor presets (EIA)
         self.presets.update(ResistorPresets.get_all())
 
-    def get(self, name: str) -> Optional[ParameterSet]:
+    def get(self, name: str) -> ParameterSet | None:
         """Get preset by name.
 
         Args:
@@ -52,7 +50,7 @@ class PresetLibrary:
         """
         return self.presets.get(name)
 
-    def list_presets(self, category: Optional[str] = None) -> List[str]:
+    def list_presets(self, category: str | None = None) -> list[str]:
         """List available preset names.
 
         Args:
@@ -62,10 +60,7 @@ class PresetLibrary:
             List of preset names.
         """
         if category:
-            return [
-                name for name in self.presets.keys()
-                if name.startswith(category)
-            ]
+            return [name for name in self.presets.keys() if name.startswith(category)]
         return list(self.presets.keys())
 
     def add_preset(self, name: str, params: ParameterSet) -> None:
@@ -82,7 +77,7 @@ class BGAPresets:
     """BGA package presets following JEDEC standards."""
 
     @staticmethod
-    def get_all() -> Dict[str, ParameterSet]:
+    def get_all() -> dict[str, ParameterSet]:
         """Get all BGA presets."""
         return {
             "BGA_10x10_0.5mm": BGAPresets.create_standard(10, 10, 0.5),
@@ -118,46 +113,58 @@ class BGAPresets:
         # Calculate substrate size
         substrate_size = (max(rows, cols) - 1) * pitch + 2.0  # 2mm margin
 
-        params.add(FloatParameter(
-            name="substrate_width",
-            value=substrate_size,
-            unit=Unit.MM,
-        ))
+        params.add(
+            FloatParameter(
+                name="substrate_width",
+                value=substrate_size,
+                unit=Unit.MM,
+            )
+        )
 
-        params.add(FloatParameter(
-            name="substrate_height",
-            value=substrate_size,
-            unit=Unit.MM,
-        ))
+        params.add(
+            FloatParameter(
+                name="substrate_height",
+                value=substrate_size,
+                unit=Unit.MM,
+            )
+        )
 
-        params.add(FloatParameter(
-            name="substrate_thickness",
-            value=substrate_thickness,
-            unit=Unit.MM,
-        ))
+        params.add(
+            FloatParameter(
+                name="substrate_thickness",
+                value=substrate_thickness,
+                unit=Unit.MM,
+            )
+        )
 
         params.add(IntParameter(name="ball_rows", value=rows))
         params.add(IntParameter(name="ball_cols", value=cols))
 
-        params.add(FloatParameter(
-            name="ball_pitch",
-            value=pitch,
-            unit=Unit.MM,
-        ))
+        params.add(
+            FloatParameter(
+                name="ball_pitch",
+                value=pitch,
+                unit=Unit.MM,
+            )
+        )
 
         # Ball diameter (typically 60-75% of pitch)
         ball_diameter = pitch * 0.65
-        params.add(FloatParameter(
-            name="ball_diameter",
-            value=ball_diameter,
-            unit=Unit.MM,
-        ))
+        params.add(
+            FloatParameter(
+                name="ball_diameter",
+                value=ball_diameter,
+                unit=Unit.MM,
+            )
+        )
 
-        params.add(EnumParameter(
-            name="ball_pattern",
-            value="full",
-            choices=["full", "peripheral", "custom"],
-        ))
+        params.add(
+            EnumParameter(
+                name="ball_pattern",
+                value="full",
+                choices=["full", "peripheral", "custom"],
+            )
+        )
 
         params.add(IntParameter(name="layer_count", value=4))
 
@@ -180,7 +187,7 @@ class MLCCPresets:
     }
 
     @staticmethod
-    def get_all() -> Dict[str, ParameterSet]:
+    def get_all() -> dict[str, ParameterSet]:
         """Get all MLCC presets."""
         presets = {}
         for size_code in MLCCPresets.EIA_SIZES:
@@ -204,37 +211,47 @@ class MLCCPresets:
 
         params = ParameterSet()
 
-        params.add(FloatParameter(
-            name="body_length",
-            value=length,
-            unit=Unit.MM,
-        ))
+        params.add(
+            FloatParameter(
+                name="body_length",
+                value=length,
+                unit=Unit.MM,
+            )
+        )
 
-        params.add(FloatParameter(
-            name="body_width",
-            value=width,
-            unit=Unit.MM,
-        ))
+        params.add(
+            FloatParameter(
+                name="body_width",
+                value=width,
+                unit=Unit.MM,
+            )
+        )
 
-        params.add(FloatParameter(
-            name="body_height",
-            value=height,
-            unit=Unit.MM,
-        ))
+        params.add(
+            FloatParameter(
+                name="body_height",
+                value=height,
+                unit=Unit.MM,
+            )
+        )
 
         # Termination (typically 20-30% of length)
         term_length = length * 0.25
-        params.add(FloatParameter(
-            name="termination_length",
-            value=term_length,
-            unit=Unit.MM,
-        ))
+        params.add(
+            FloatParameter(
+                name="termination_length",
+                value=term_length,
+                unit=Unit.MM,
+            )
+        )
 
-        params.add(FloatParameter(
-            name="termination_width",
-            value=width * 0.9,
-            unit=Unit.MM,
-        ))
+        params.add(
+            FloatParameter(
+                name="termination_width",
+                value=width * 0.9,
+                unit=Unit.MM,
+            )
+        )
 
         # Layer count varies by size
         layer_count = {
@@ -250,11 +267,13 @@ class MLCCPresets:
 
         params.add(IntParameter(name="layer_count", value=layer_count))
 
-        params.add(FloatParameter(
-            name="layer_thickness",
-            value=2.0,  # µm
-            unit=Unit.UM,
-        ))
+        params.add(
+            FloatParameter(
+                name="layer_thickness",
+                value=2.0,  # µm
+                unit=Unit.UM,
+            )
+        )
 
         return params
 
@@ -263,7 +282,7 @@ class ResistorPresets:
     """Chip resistor presets following EIA standards."""
 
     @staticmethod
-    def get_all() -> Dict[str, ParameterSet]:
+    def get_all() -> dict[str, ParameterSet]:
         """Get all resistor presets."""
         presets = {}
         for size in ["0402", "0603", "0805", "1206", "1210", "2512"]:
@@ -285,17 +304,21 @@ class ResistorPresets:
         params.add(FloatParameter(name="body_width", value=width, unit=Unit.MM))
         params.add(FloatParameter(name="body_height", value=height * 0.6, unit=Unit.MM))
 
-        params.add(FloatParameter(
-            name="termination_length",
-            value=length * 0.2,
-            unit=Unit.MM,
-        ))
+        params.add(
+            FloatParameter(
+                name="termination_length",
+                value=length * 0.2,
+                unit=Unit.MM,
+            )
+        )
 
-        params.add(FloatParameter(
-            name="resistor_thickness",
-            value=0.02,  # mm
-            unit=Unit.MM,
-        ))
+        params.add(
+            FloatParameter(
+                name="resistor_thickness",
+                value=0.02,  # mm
+                unit=Unit.MM,
+            )
+        )
 
         return params
 
