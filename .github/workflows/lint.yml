@@ -1,0 +1,44 @@
+name: Code Quality
+
+on:
+  push:
+    branches: [ main, develop, "claude/**" ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ruff black isort mypy
+        pip install pydantic sympy numpy
+
+    - name: Check code formatting with Black
+      run: |
+        black --check src/koocad tests/ examples/ || echo "::warning::Code needs formatting with black"
+
+    - name: Check import sorting with isort
+      run: |
+        isort --check-only src/koocad tests/ || echo "::warning::Imports need sorting with isort"
+
+    - name: Lint with Ruff
+      run: |
+        ruff check src/koocad tests/ --output-format=github
+
+    - name: Type check with mypy
+      run: |
+        mypy src/koocad/core/ --ignore-missing-imports --no-strict-optional || echo "::warning::Type check found issues"
+      continue-on-error: true
