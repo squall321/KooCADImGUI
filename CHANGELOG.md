@@ -7,7 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added - Phase 1-10 Implementation
+### Added - Phase 147 (Current)
+- GitHub Actions CI/CD workflows (test, lint, security)
+- Docker Compose configuration for backend services
+- Production deployment guide (DEPLOYMENT.md)
+- QUICKSTART.md for 5-minute onboarding
+
+### Changed
+- Code formatting with Black (all core modules)
+- Type annotations modernized (dict/list instead of Dict/List)
+- Linting with Ruff (Python 3.11+ improvements)
+
+---
+
+## [0.2.0] - 2025-11-10 (Phase 146)
+
+### Added
+- Comprehensive test suite (79 tests, 100% passing)
+  - test_serialization.py (8 tests)
+  - test_expressions.py (15 tests)
+  - test_validation.py (18 tests)
+- Installation guide (INSTALLATION.md)
+- Additional improvement checklist (ADDITIONAL_CHECKS.md)
+- Phase 146 documentation updates
+
+### Changed
+- **BREAKING**: Migrated to Pydantic V2 API
+  - `Config` → `ConfigDict`
+  - `@validator` → `@field_validator`
+  - All deprecation warnings eliminated (0 warnings)
+- Test count increased from 40 to 79 (+97.5%)
+- Test coverage improved from 3.87% to 6.08% (+57%)
+- Core module coverage:
+  - parameters.py: 72.93% ⭐
+  - presets.py: 89.90% ⭐⭐ (highest)
+  - validation.py: 58.18% ⭐
+  - serialization.py: 42.79%
+  - expressions.py: 36.81%
+
+### Fixed
+- All Pydantic V2 deprecation warnings resolved
+- API inconsistencies documented in API_CORRECTIONS.md
+- Parameter serialization roundtrip issues
+
+---
+
+## [0.1.0] - 2025-11-09 (Phase 145 Complete)
+
+### Added - Phase 1-145 Implementation
 
 **Infrastructure (Phase 1-5)**
 - ✅ Project structure with modular architecture
