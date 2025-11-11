@@ -1,0 +1,136 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for storing projects, jobs, parameters
+  postgres:
+    image: postgres:15-alpine
+    container_name: koocad-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: koocad
+      POSTGRES_USER: koocad
+      POSTGRES_PASSWORD: koocad_dev_password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U koocad"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - koocad-network
+
+  # Redis for caching and Celery message broker
+  redis:
+    image: redis:7-alpine
+    container_name: koocad-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass koocad_redis_password
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - koocad-network
+
+  # MinIO for S3-compatible object storage (CAD files, exports)
+  minio:
+    image: minio/minio:latest
+    container_name: koocad-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: koocad
+      MINIO_ROOT_PASSWORD: koocad_minio_password
+    ports:
+      - "9000:9000"  # API
+      - "9001:9001"  # Console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - koocad-network
+
+  # MinIO client to create default bucket
+  minio-init:
+    image: minio/mc:latest
+    container_name: koocad-minio-init
+    depends_on:
+      - minio
+    entrypoint: >
+      /bin/sh -c "
+      sleep 10;
+      /usr/bin/mc alias set koocad http://minio:9000 koocad koocad_minio_password;
+      /usr/bin/mc mb koocad/koocad-storage || true;
+      /usr/bin/mc anonymous set download koocad/koocad-storage;
+      exit 0;
+      "
+    networks:
+      - koocad-network
+
+  # Prometheus for metrics collection (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: koocad-prometheus
+    restart: unless-stopped
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./config/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    networks:
+      - koocad-network
+    profiles:
+      - monitoring
+
+  # Grafana for metrics visualization (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: koocad-grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: koocad_grafana_password
+      GF_INSTALL_PLUGINS: ""
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    networks:
+      - koocad-network
+    profiles:
+      - monitoring
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+  minio_data:
+    driver: local
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+
+networks:
+  koocad-network:
+    driver: bridge
